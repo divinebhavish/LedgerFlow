@@ -1,7 +1,12 @@
 const express = require("express")
 const cookieParser = require("cookie-parser")
 
+
+/**
+ * - Routes
+ */
 const authRouter = require("./routes/auth.routes")
+const accountRouter = require("./routes/account.routes")
 
 
 
@@ -17,10 +22,16 @@ app.use(express.json())
 
 app.use(cookieParser())
 
+
+
 // whichever endpoints hit by "/api/auth" like who ever the user hits the server all
 // thos requests will be redirect to authRouter
+/**
+ * - User Routes
+ */
 app.use("/api/auth", authRouter)
+app.use("/api/accounts", accountRouter)
 
 
 
-module.exports = app;
+module.exports = app
