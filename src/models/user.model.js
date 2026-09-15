@@ -22,7 +22,15 @@ const userSchema = mongoose.Schema({
         required: [true, "Passsword is requiredf ro creating an account"],
         minLen: [6, "Password should be minimum of 6 character"],
         Select: false // Whenever we want details fo user then due to this select password will not come woth them.
+    },
+
+    systemUser: {
+        type: Boolean,
+        default: false,
+        immutable: true,
+        select: false
     }
+
 }, {
     timestamps: true
 })
