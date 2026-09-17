@@ -30,7 +30,7 @@ const accountSchema = new mongoose.Schema({
 
 accountSchema.index({ user: 1, status: 1 })
 
-accountSchema.methods.getBalance = async function(){}
+// accountSchema.methods.getBalance = async function(){}
 
 accountSchema.methods.getBalance = async function () {
     
@@ -42,7 +42,7 @@ accountSchema.methods.getBalance = async function () {
                 totalDebit: {
                     $sum: {
                         $cond: {
-                            if: { $eq: [ "$type", "Debit" ] },
+                            if: { $eq: [ "$type", "DEBIT" ] },
                             then: "$amount",
                             else: 0
                         }
@@ -51,7 +51,7 @@ accountSchema.methods.getBalance = async function () {
                 totalCredit: {
                     $sum: {
                         $cond: {
-                            if: { $eq: [ "$type", "Credit" ] },
+                            if: { $eq: [ "$type", "CREDIT" ] },
                             then: "$amount",
                             else: 0
                         }
@@ -60,7 +60,7 @@ accountSchema.methods.getBalance = async function () {
             }
         },
         {
-            project:{
+            $project:{
                 _id: 0,
                 balance: { $subtract: ["$totalCredit", "$totalDebit"] }
             } 

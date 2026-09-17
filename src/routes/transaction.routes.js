@@ -6,14 +6,14 @@ const transactionController = require("../controllers/transaction.controller");
 const transactionRoutes = Router();
 
 /**
- * - POST /api/transaction
- * - Create a new transaction
+ * - POST /api/transactions
+ * - Create a new transactions
  */
 transactionRoutes.post("/", authMiddleware.authMiddleware, transactionController.createTransaction)
 
 
 /**
- * - POST /api/transaction/system/initinal-funds
+ * - POST /api/transactions/system/initinal-funds
  * - Create Initial funds transaction from system user
  */
 

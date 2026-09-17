@@ -25,19 +25,19 @@ async function createTransaction(req, res) {
     /**
      * - Validate Request
      */
-    const { fromAccount, toAccount, amount, idemotencyKey } = req.body
+    const { fromAccount, toAccount, amount, idempotencyKey } = req.body
 
-    if ( !fromAccount || !toAccount || !amount || !idempotecyKey ) {
+    if ( !fromAccount || !toAccount || !amount || !idempotencyKey ) {
         return res.status(400).json({
             message: "Missing required fields",
         })
-    }
+    } 
 
     const fromUserAccount = await accountModel.findOne({
         _id: fromAccount
     })
     
-    const toUserAccount = await accountModel.findone({
+    const toUserAccount = await accountModel.findOne({
         _id: toAccount
     })
 
@@ -54,11 +54,11 @@ async function createTransaction(req, res) {
      */
 
     const isTransactionAlreadyExists = await transactionModel.findOne({
-        idempotencyKey: idemotencyKey
+        idempotencyKey: idempotencyKey
     })
 
 
-    if (!isTransactionAlreadyExists) {
+    if (isTransactionAlreadyExists) {
         if (isTransactionAlreadyExists.status == "Completed") {
             return res.status(200).json({
                 message: "Transaction already completed",
@@ -114,47 +114,59 @@ async function createTransaction(req, res) {
     const session = await mongoose.startSession()
     session.startTransaction()
 
-    const transaction = await transactionModel.create({
-        fromAccount,
-        toAccount,
-        amount,
-        idempotencyKey,
-        status: "Pending"
-    }, { session })
+    try {
+        const [ transaction ] = await transactionModel.create([ {
+            fromAccount,
+            toAccount,
+            amount,
+            idempotencyKey,
+            status: "Completed"
+        } ], { session })
 
-    const debitLedgerentry = await ledgerModel.create({
-        account: fromAccount,
-        amaunt: amount,
-        transaction: transaction._id,
-        type: "DEBIT",
-    }, { session })
+        await ledgerModel.create([{
+            account: fromAccount,
+            amount: amount,
+            transaction: transaction._id,
+            type: "DEBIT",
+        }], { session }) 
 
-    const creditLedgerEntry = await ledgerModel.create({
-        account: toAccount,
-        amount: amount,
-        transaction: transaction._id,
-        type: "CREDIT"
-    }, { session })
+        await (()=>{ 
+            return new Promise((resolve) => setTimeout(resolve, 100 * 1000))
+        })() 
 
-    transaction.status = "COMPLETED"
-    await transaction.save({ session })
+        await ledgerModel.create([{
+            account: toAccount,
+            amount: amount,
+            transaction: transaction._id,
+            type: "CREDIT"
+        }], { session })
 
-    /**
-     * - 10. Send Email notification
-     */
 
-    await emailService.sendTransactionEmail(
-        req.user.email,
-        req.user.name,
-        amount,
-        fromUserAccount._id,
-        toUserAccount._id
-    )
 
-    return res.status(200).json({
-        message: "Transaction completed successfully",
-        transaction: transaction
-    })
+        await session.commitTransaction()
+        session.endSession()
+
+        /**
+         * -Email Servicce Notiffication
+         */
+
+        await emailService.sendTransactionEmail(
+            req.user.email,
+            req.user.name,
+            amount,
+            fromUserAccount._id,
+            toUserAccount._id
+        )
+
+        return res.status(200).json({
+            message: "Transaction completed successfully",
+            transaction: transaction
+        })
+    } catch (err) {
+        await session.abortTransaction()
+        session.endSession()
+        return res.status(500).json({ message: err.message })
+    }
 }
 
 async function createInitialFundsTransaction(req, res) {
@@ -203,19 +215,25 @@ async function createInitialFundsTransaction(req, res) {
             status: "Completed"
         } ], { session })
 
-        await ledgerModel.create( [ {
+        const debitLedgerEntry = await ledgerModel.create( [ {
             account: fromUserAccount._id,
             amount: amount,
             transaction: transaction._id,
             type: "DEBIT",
         } ], { session })
 
-        await ledgerModel.create( [ {
+        const creditLedgerEntry = await ledgerModel.create( [ {
             account: toAccount,
             amount: amount,
             transaction: transaction._id,
             type: "CREDIT"
         } ], { session })
+
+        await transactionModel.findOneAndUpdate(
+            { _id: transaction._id },
+            { status: "Completed" },
+            { session }
+        )
 
         await session.commitTransaction()
         session.endSession()
