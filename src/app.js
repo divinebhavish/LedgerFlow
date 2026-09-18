@@ -23,7 +23,9 @@ app.use(express.json())
 
 app.use(cookieParser())
 
-
+app.get("/", (req, res) => {
+    res.send("Ledger servise is Up & Running")
+})
 
 // whichever endpoints hit by "/api/auth" like who ever the user hits the server all
 // thos requests will be redirect to authRouter
@@ -33,6 +35,7 @@ app.use(cookieParser())
 app.use("/api/auth", authRouter)
 app.use("/api/accounts", accountRouter)
 app.use("/api/transactions", transactionRouter)
+
 
 
 
